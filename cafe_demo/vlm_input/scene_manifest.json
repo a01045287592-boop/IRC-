@@ -1,0 +1,187 @@
+{
+  "trays": {
+    "tray_1": [
+      -0.095,
+      0.145
+    ],
+    "tray_2": [
+      0.095,
+      0.145
+    ]
+  },
+  "objects": [
+    {
+      "name": "cup_1",
+      "kind": "cup",
+      "tray": "tray_1",
+      "contents": "liquid",
+      "destination": "cup_stack",
+      "xy_m": [
+        -0.15017759106503684,
+        0.14710557456756282
+      ]
+    },
+    {
+      "name": "cup_2",
+      "kind": "cup",
+      "tray": "tray_1",
+      "contents": "empty",
+      "destination": "cup_stack",
+      "xy_m": [
+        -0.11086391797478842,
+        0.17286280866117384
+      ]
+    },
+    {
+      "name": "plate_1",
+      "kind": "plate",
+      "tray": "tray_1",
+      "contents": "empty",
+      "destination": "plate_stack",
+      "xy_m": [
+        -0.058801423530255505,
+        0.16273874464453614
+      ]
+    },
+    {
+      "name": "fork_1",
+      "kind": "fork",
+      "tray": "tray_1",
+      "contents": null,
+      "destination": "fork_bin",
+      "xy_m": [
+        -0.11896893788554397,
+        0.09582185427815587
+      ]
+    },
+    {
+      "name": "fork_2",
+      "kind": "fork",
+      "tray": "tray_1",
+      "contents": null,
+      "destination": "fork_bin",
+      "xy_m": [
+        -0.08551049270235384,
+        0.11774290457059078
+      ]
+    },
+    {
+      "name": "tissue_1",
+      "kind": "tissue",
+      "tray": "tray_1",
+      "contents": null,
+      "destination": "general_waste",
+      "xy_m": [
+        -0.05692659686050778,
+        0.11973310518924607
+      ]
+    },
+    {
+      "name": "cup_3",
+      "kind": "cup",
+      "tray": "tray_2",
+      "contents": "liquid",
+      "destination": "cup_stack",
+      "xy_m": [
+        0.08075131730991732,
+        0.19259175392436528
+      ]
+    },
+    {
+      "name": "plate_2",
+      "kind": "plate",
+      "tray": "tray_2",
+      "contents": "cake",
+      "destination": "plate_stack",
+      "xy_m": [
+        0.11758445049865333,
+        0.13020329105260642
+      ]
+    },
+    {
+      "name": "fork_3",
+      "kind": "fork",
+      "tray": "tray_2",
+      "contents": null,
+      "destination": "fork_bin",
+      "xy_m": [
+        0.05037912526000419,
+        0.14076000737764746
+      ]
+    },
+    {
+      "name": "tissue_2",
+      "kind": "tissue",
+      "tray": "tray_2",
+      "contents": null,
+      "destination": "general_waste",
+      "xy_m": [
+        0.09312517333025228,
+        0.10199436054470992
+      ]
+    }
+  ],
+  "stations": {
+    "wet_waste": {
+      "xy": [
+        -0.19,
+        0.04
+      ],
+      "tag": "W",
+      "label": "Drink + food waste"
+    },
+    "general_waste": {
+      "xy": [
+        0.175,
+        0.03
+      ],
+      "tag": "G",
+      "label": "General waste"
+    },
+    "fork_bin": {
+      "xy": [
+        -0.17,
+        -0.025
+      ],
+      "tag": "F",
+      "label": "Fork collection"
+    },
+    "cup_stack": {
+      "xy": [
+        0.17,
+        -0.035
+      ],
+      "tag": "C",
+      "label": "Cup stack"
+    },
+    "plate_stack": {
+      "xy": [
+        -0.15,
+        -0.08
+      ],
+      "tag": "P",
+      "label": "Plate stack"
+    },
+    "tray_stack": {
+      "xy": [
+        0.095,
+        0.145
+      ],
+      "tag": "R",
+      "label": "Empty trays: reuse T2"
+    }
+  },
+  "notes": [
+    "Scene only: no automatic sorting actions.",
+    "Liquids are visual markers, not fluids.",
+    "Tissues are rigid compound bodies, not deformable paper.",
+    "Grasp sites are proposed; complete motion reachability has not been validated."
+  ],
+  "contents_objects": [
+    {
+      "name": "cake_piece",
+      "container": "plate_2",
+      "destination": "wet_waste"
+    }
+  ]
+}

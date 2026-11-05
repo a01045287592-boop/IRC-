@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.env
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# datasets
+Mujoco/raccoon_dataset/openvla_rlds_intermediate/
+Mujoco/raccoon_dataset/raccoon_grasp_colored_cylinder/
+Mujoco/raccoon_dataset/tensorflow_datasets/
+Mujoco/raccoon_dataset/raccoon_grasp/
+data/
+*.tfrecord
+
+# training outputs / checkpoints
+runs/
+wandb/
+checkpoints/
+openvla-runs/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+# RaccoonBot Cafe generated files
+__pycache__/
+*.pyc
+raccoon_real_cup/real_logs/
+cafe_demo/outputs/
+cafe_demo/sorting_outputs/
+cafe_demo/nesting_outputs/
+cafe_demo/nesting_sorting_outputs/
