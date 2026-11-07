@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "version": "TRAY4_DEMO_1.0",
+  "destinations": {
+    "tissue_bin": [
+      12.61,
+      11.823,
+      9.725
+    ],
+    "plate_pour": [
+      15.102,
+      7.086,
+      15.599
+    ],
+    "cup_pour": [
+      14.722,
+      6.689,
+      13.661
+    ],
+    "plate_place": [
+      12.625,
+      -1.165,
+      9.676
+    ],
+    "glass_place": [
+      15.265,
+      0.304,
+      13.529
+    ],
+    "plastic_place": [
+      11.313,
+      -0.486,
+      5.716
+    ]
+  },
+  "pickups": {
+    "plastic_1": null,
+    "glass_1": null,
+    "plate_1": null,
+    "tissue_1": null
+  },
+  "speed": 25,
+  "clearance_z_cm": 15.0,
+  "approach_cm": 2.0,
+  "cup_pour_pitch_deg": -90.0,
+  "plate_pour_pitch_deg": 10.0,
+  "pour_cycles": 2,
+  "hold_seconds": 1.0,
+  "gripper_settle_seconds": 1.0,
+  "model": "~/yolo_ws/runs/segment/angle3/weights/best.pt",
+  "vision_python": "~/yolo_ws/.venv/bin/python",
+  "confidence": 0.4,
+  "glass_max": 0.2,
+  "plastic_min": 0.25,
+  "stable_frames": 5,
+  "stable_pixels": 8.0,
+  "camera_hz": 10,
+  "joint_read_hz": 20,
+  "camera_serial": null,
+  "max_joint_age_ms": 100.0,
+  "max_step_gap_ms": 200.0,
+  "instruction": "트레이의 아래쪽 변 중앙에서 가까운 물체부터 네 물체를 정리한다.",
+  "glass_grasp_pitch_deg": 2.99
+}

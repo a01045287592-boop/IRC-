@@ -1,0 +1,5 @@
+# GPU별 torch 설치는 README의 공식 안내를 따른다. ultralytics가 torch를 의존성으로 설치할 수 있다.
+ultralytics==8.4.202
+pyrealsense2==2.59.1.11053
+opencv-python==5.0.0.93
+numpy==2.4.6

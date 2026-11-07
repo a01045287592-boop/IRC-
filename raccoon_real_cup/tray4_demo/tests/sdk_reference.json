@@ -1,0 +1,122 @@
+{
+  "source": "user-supplied roboid/raccoon.py; extracted original methods with waits mocked",
+  "source_sha256": "d98a3408f04253adf51393cf32fdf7209f0a8b08d34ab37341170d0df3f21e3c",
+  "constants": {
+    "JOINT_VELOCITY": 50331648,
+    "JOINT_SPEED": 50331649,
+    "JOINT_ANGLE": 50331650,
+    "JOINT_MODE": 50331653,
+    "WRITE_EXT": 50331654,
+    "ENCODER": 50331665,
+    "JOINT_MODE_VELOCITY": 0,
+    "JOINT_MODE_ANGLE": 1,
+    "JOINT_MODE_VELOCITY_HORZ": 2,
+    "JOINT_MODE_VELOCITY_VERT": 3,
+    "JOINT_MODE_ANGLE_HORZ": 4,
+    "JOINT_MODE_ANGLE_VERT": 5
+  },
+  "fixtures": [
+    {
+      "mode": "horizontal",
+      "goal": [
+        0.0,
+        -3.08,
+        -105.79,
+        18.87
+      ],
+      "grip": 0,
+      "observed": [
+        0,
+        -10,
+        -140,
+        60
+      ],
+      "final_device_values": {
+        "50331653": 4,
+        "50331649": 20,
+        "50331650:3": 60,
+        "50331650:0": 0.0,
+        "50331650:1": -3.08,
+        "50331650:2": -105.79,
+        "50331654": [
+          33,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "mode": "wrist",
+      "goal": [
+        0.0,
+        -3.08,
+        -105.79,
+        -71.13
+      ],
+      "grip": 1,
+      "observed": [
+        0.0,
+        -3.08,
+        -105.79,
+        18.87
+      ],
+      "final_device_values": {
+        "50331653": 1,
+        "50331649": 20,
+        "50331650:3": -71.13,
+        "50331650:0": 0.0,
+        "50331650:1": -3.08,
+        "50331650:2": -105.79,
+        "50331654": [
+          33,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "mode": "vertical",
+      "goal": [
+        -10.0,
+        -30.0,
+        -90.0,
+        -60.0
+      ],
+      "grip": 1,
+      "observed": [
+        0.0,
+        -3.08,
+        -105.79,
+        -71.13
+      ],
+      "final_device_values": {
+        "50331653": 5,
+        "50331649": 20,
+        "50331650:3": -71.13,
+        "50331650:0": -10.0,
+        "50331650:1": -30.0,
+        "50331650:2": -90.0,
+        "50331654": [
+          33,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ]
+}
