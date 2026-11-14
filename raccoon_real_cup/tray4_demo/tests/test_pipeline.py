@@ -61,7 +61,7 @@ class SchemaTests(unittest.TestCase):
     def test_latest_destinations_and_cycles(self):
         c=config();self.assertEqual(c['destinations']['glass_place'],[16.492,-1.089,10.792])
         self.assertEqual(c['destinations']['cup_pour'],[13.428,6.225,13.165])
-        self.assertEqual(c['pour_cycles'],2)
+        self.assertEqual(c['pour_cycles'],1)
     def test_selection_four_instances_distance_and_tie(self):
         ds=[dict(kind=k,center=[i,0],box=[i,0,i+1,1]) for i,k in enumerate(KINDS.values())]
         s=selection(ds,[0,0]);self.assertEqual(s['order'],list(ROLES))
@@ -106,13 +106,16 @@ class MotionTests(unittest.TestCase):
                 self.assertEqual(sum(s['kind']=='close' for s in ss),1)
                 self.assertEqual(names.count('RELEASE'),1)
                 if obj['id'] in ('plastic_1','glass_1'):
-                    for n in ('FRONT_APPROACH','LIFT_UPRIGHT','TILT_DOWN_1','TILT_UP_1','TILT_DOWN_2','TILT_UP_2','RETURN_START'):
+                    for n in ('FRONT_APPROACH','LIFT_UPRIGHT','TILT_DOWN_1','TILT_UP_1','RETURN_START'):
                         self.assertIn(n,names)
                 if obj['id']=='glass_1':
                     i=names.index('GLASS_POINT_DOWN_AT_PLACE');self.assertEqual(names[i+1],'RELEASE')
                     self.assertEqual(ss[i]['mode'],'wrist');self.assertAlmostEqual(kin.pitch(ss[i]['target']),-90)
                 if obj['id']=='plate_1':
-                    self.assertIn('TIP_UP_2',names);self.assertIn('POINT_DOWN_2',names)
+                    self.assertIn('TIP_UP_1',names);self.assertIn('POINT_DOWN_1',names)
+                    lift=next(s for s in ss if s['name']=='LIFT_DOWNWARD')
+                    self.assertEqual(lift['joint_tolerance_deg'],2.5)
+                    self.assertEqual(lift['position_tolerance_cm'],.65)
                 if obj['id']=='tissue_1':self.assertIn('FACE_FORWARD',names)
     def test_reject_unreachable_or_nonhorizontal_start(self):
         c=config();c['pickups']['plastic_1']=[100,100,100]

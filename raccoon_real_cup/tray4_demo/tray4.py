@@ -6,8 +6,10 @@ import json
 import math
 import os
 import select
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 from datetime import datetime
@@ -54,9 +56,17 @@ def run(args):
     py=Path(cfg['vision_python']).expanduser()
     if not py.is_file():raise FileNotFoundError('YOLO Python 없음: '+str(py))
     stamp=datetime.now().strftime('%Y%m%d_%H%M%S_%f')
-    folder=args.out.expanduser()/stamp;folder.mkdir(parents=True,exist_ok=False)
+    temp_root=None
+    if args.demo_only:
+        temp_root=Path(tempfile.mkdtemp(prefix='tray4_demo_'))
+        folder=temp_root/stamp
+        args.auto_continue=True
+    else:
+        folder=args.out.expanduser()/stamp
+    folder.mkdir(parents=True,exist_ok=False)
     atomic_json(folder/'config.json',cfg);atomic_json(folder/'schema.json',SCHEMA)
-    atomic_json(folder/'camera_control.json',dict(mode='select'))
+    record_frames=not args.demo_only
+    atomic_json(folder/'camera_control.json',dict(mode='select',record_frames=record_frames))
     meta=dict(version=VERSION,status='starting',success='unverified',episode_id=stamp,
               object_count=4,objects=[],config_hash=hash_data(cfg),simulated=False,
               empty_run=args.empty_run,sdk=kin.SDK_VERSION,instruction=cfg['instruction'])
@@ -64,7 +74,7 @@ def run(args):
     log=JsonLog(folder/'events.jsonl');steps=JsonLog(folder/'steps.jsonl')
     worker_log=(folder/'camera_worker.log').open('x',encoding='utf-8')
     process=None;robot=None;port=None;sampler=None;failure=None
-    print('에피소드 저장:',folder,flush=True)
+    print(('임시 시연 세션:' if args.demo_only else '에피소드 저장:')+str(folder),flush=True)
     try:
         process=subprocess.Popen([str(py),str(ROOT/'camera_worker.py'),'--episode',str(folder)],
                                  env=vision_env(),stdout=worker_log,stderr=subprocess.STDOUT)
@@ -114,7 +124,7 @@ def run(args):
             30,
             '확인한 배치가 안정되지 않았습니다. 다시 시작하세요.',
         )
-        atomic_json(folder/'camera_control.json',dict(mode='freeze',selection=r['selection']))
+        atomic_json(folder/'camera_control.json',dict(mode='freeze',selection=r['selection'],record_frames=record_frames))
         chosen=wait_until(lambda:read_json(folder/'selection.json') if (folder/'selection.json').exists() else None,
                           camera_guard,30,'순서 확정 응답 없음')
         meta['order']=chosen['order'];meta['status']='recording'
@@ -124,6 +134,9 @@ def run(args):
         wait_until(robot.is_connected,camera_guard,8,'로봇 연결 실패')
         port=NativePort(robot,cfg['speed'],log);home=port.read()
         plans=plan_episode(cfg,chosen['order'],home)
+        if args.demo_only:
+            print('시연 모드: 24분할 없이 각 동작 단계의 원래 목표로 이동합니다. '
+                  'ACT 모델 추론은 실행하지 않습니다.',flush=True)
         if args.empty_run:
             for obj in plans:
                 for s in obj['stages']:
@@ -138,12 +151,12 @@ def run(args):
         time.sleep(.2)
         guard()
         sampler.before(time.monotonic_ns(),cfg['max_joint_age_ms'])
-        atomic_json(folder/'camera_control.json',dict(mode='record'))
+        atomic_json(folder/'camera_control.json',dict(mode='record',record_frames=record_frames))
         last_frame=-1
         for segment,obj in enumerate(plans):
             role=obj['id']
             actual=port.read()
-            if max(abs(a-b) for a,b in zip(actual,home))>2.5 or math.dist(kin.wrist_fk(actual),kin.wrist_fk(home))>.5:
+            if max(abs(a-b) for a,b in zip(actual,home))>3.0 or math.dist(kin.wrist_fk(actual),kin.wrist_fk(home))>.8:
                 raise RuntimeError('대기 중 시작 자세가 바뀌었습니다. 자동으로 이동하지 않습니다.')
             controller=Controller(port,obj['stages'],log,role)
             log.write('segment_start',segment_id=segment,object_id=role)
@@ -166,13 +179,22 @@ def run(args):
                 steps.write('step',**step);previous_frame_ns=t
             log.write('segment_end',segment_id=segment,object_id=role)
             next_label=LABELS[plans[segment+1]['id']] if segment+1<len(plans) else '에피소드 저장'
-            response=ask(f'{LABELS[role]} 동작·복귀 완료. 실제 성공이면 Y Enter → {next_label}; 실패/중단 N > ',guard).lower()
-            success='user_confirmed' if response=='y' and not args.empty_run else ('empty_run' if args.empty_run and response=='y' else 'failed_or_unconfirmed')
-            meta['objects'].append(dict(id=role,segment_id=segment,success=success))
-            log.write('user_result',object_id=role,success=success)
-            atomic_json(folder/'metadata.json',meta)
-            if response!='y':raise RuntimeError('사용자가 실패/중단을 선택했습니다.')
-        meta['status']='complete';meta['success']='empty_run' if args.empty_run else 'user_confirmed'
+            if args.auto_continue:
+                print(f'{LABELS[role]} 동작·Home 복귀 완료. 1초 후 {next_label} 진행',flush=True)
+                time.sleep(1.0)
+                guard()
+                success='empty_run' if args.empty_run else 'auto_completed'
+                meta['objects'].append(dict(id=role,segment_id=segment,success=success))
+                log.write('auto_result',object_id=role,success=success)
+                atomic_json(folder/'metadata.json',meta)
+            else:
+                response=ask(f'{LABELS[role]} 동작·복귀 완료. 실제 성공이면 Y Enter → {next_label}; 실패/중단 N > ',guard).lower()
+                success='user_confirmed' if response=='y' and not args.empty_run else ('empty_run' if args.empty_run and response=='y' else 'failed_or_unconfirmed')
+                meta['objects'].append(dict(id=role,segment_id=segment,success=success))
+                log.write('user_result',object_id=role,success=success)
+                atomic_json(folder/'metadata.json',meta)
+                if response!='y':raise RuntimeError('사용자가 실패/중단을 선택했습니다.')
+        meta['status']='complete';meta['success']='empty_run' if args.empty_run else ('auto_completed' if args.auto_continue else 'user_confirmed')
     except BaseException as exc:
         failure=exc;meta['status']='aborted';meta['success']='unverified';meta['error']=repr(exc)
         log.write('error',message=repr(exc),traceback=traceback.format_exc())
@@ -196,6 +218,14 @@ def run(args):
                 except subprocess.TimeoutExpired:process.kill();process.wait(timeout=3)
         worker_log.close();steps.close();log.close()
         atomic_json(folder/'metadata.json',meta)
+        if failure:
+            print('실패/중단 에피소드 기록을 삭제합니다.',flush=True)
+            shutil.rmtree(temp_root if temp_root else folder,ignore_errors=True)
+            raise SystemExit(1)
+    if args.demo_only:
+        shutil.rmtree(temp_root,ignore_errors=True)
+        print('시연 완료. 임시 로그를 삭제했습니다. 데이터셋은 생성하지 않았습니다.',flush=True)
+        return
     print('원본 기록:',folder,flush=True)
     if (folder/'frames.jsonl').exists() and (folder/'frames.jsonl').stat().st_size:
         try:
@@ -226,7 +256,7 @@ def main():
     a=sub.add_parser('set-point');a.add_argument('--setup',type=Path,required=True);a.add_argument('id',choices=ROLES);a.add_argument('xyz',type=float,nargs=3)
     a=sub.add_parser('points');a.add_argument('--setup',type=Path,required=True)
     a=sub.add_parser('check');a.add_argument('--setup',type=Path,required=True)
-    a=sub.add_parser('run');a.add_argument('--setup',type=Path,required=True);a.add_argument('--execute',action='store_true');a.add_argument('--empty-run',action='store_true')
+    a=sub.add_parser('run');a.add_argument('--setup',type=Path,required=True);a.add_argument('--execute',action='store_true');a.add_argument('--empty-run',action='store_true');a.add_argument('--auto-continue',action='store_true',help='기록 모드에서 Y 확인 없이 다음 물체 진행');a.add_argument('--demo-only',action='store_true',help='자동 진행 시연만 실행하고 RGB/에피소드 파일은 저장하지 않음')
     a.add_argument('--port',default='/dev/ttyACM0');a.add_argument('--out',type=Path,default=Path.home()/'Raccoonbot_Cafe_Clean/raccoon_dataset/tray4_raw')
     a=sub.add_parser('collect',help='매 에피소드마다 새 파일에 네 파지 좌표를 터미널로 입력')
     a.add_argument('--execute',action='store_true');a.add_argument('--empty-run',action='store_true')

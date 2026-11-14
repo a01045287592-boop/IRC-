@@ -1,0 +1,78 @@
+{
+  "plate": {
+    "_readme": "손목 x,y,z 단위 cm. null 값을 실측 숫자로 바꿔야 실행 가능합니다.",
+    "_note": "아래 x,y 예시는 위치 보장 아님. 컵 적층 손목 좌표에서 y+5cm이며 그리퍼 끝 사이 5cm 보장 아님.",
+    "plate_grasp_wrist_cm": [
+      [
+        4.368,
+        13.154,
+        10.831
+      ],
+      [
+        -5.0,
+        10.0,
+        9.421
+      ]
+    ],
+    "plate_stack_wrist_cm": [
+      14.051,
+      -1.449,
+      10.273
+    ],
+    "stack_rise_mm": 5.0,
+    "pour_wrist_cm": [
+      15.788,
+      6.511,
+      15.586
+    ],
+    "clearance_z_cm": 15.0,
+    "pour_pitch_deg": 10.0,
+    "tilt_cycles": 2,
+    "hold_seconds": 1.0
+  },
+  "tissue": {
+    "_comment": "손목 좌표 cm. 파지 좌표는 기존 포크 예시입니다. 배출 [0,0,0]은 임시값입니다. 티칭하여 변경하세요.",
+    "grasp_wrist_cm": [
+      2.21,
+      12.972,
+      9.791
+    ],
+    "drop_wrist_cm": [
+      11.65,
+      11.722,
+      8.174
+    ],
+    "clearance_z_cm": 15.0
+  },
+  "cup": {
+    "grasp_wrist_cm": [
+      5.593,
+      13.74,
+      3.375
+    ],
+    "pour_wrist_cm": [
+      -8.11866453718623,
+      7.686825491230742,
+      15.0
+    ],
+    "place_wrist_cm": [
+      11.010485402520603,
+      -1.941445647161085,
+      3.2
+    ],
+    "clearance_z_cm": 15.0,
+    "approach_cm": 2.0,
+    "pour_pitch_deg": -95.0,
+    "shake_cycles": 2,
+    "hold_seconds": 1.0,
+    "speed": 40,
+    "_pour_left20_patch": {
+      "original_wrist_cm": [
+        -5.0,
+        10.0,
+        15.0
+      ],
+      "extra_joint1_deg": 20
+    }
+  }
+}

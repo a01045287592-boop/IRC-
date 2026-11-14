@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "_instructions": "손목 좌표 cm, 카메라 픽셀과 별개. plastic_1/2는 시작 화면에서 좌/우 순서. destinations의 접시/휴지 좌표만 기존 설정에서 복사. 미입력 항목은 실제 실행 차단.",
+  "model": {
+    "python": "~/yolo_ws/.venv/bin/python",
+    "weights": null,
+    "class_names": {
+      "plate": "bowl",
+      "tissue": "tissue",
+      "plastic": "plastic_cup",
+      "glass": "glass_cup",
+      "tray": "tray"
+    }
+  },
+  "pickups": {
+    "plate": [
+      8.434,
+      13.641,
+      10.266
+    ],
+    "tissue": [
+      0.805,
+      13.435,
+      10.874
+    ],
+    "plastic_1": [
+      0.152,
+      9.936,
+      3.882
+    ],
+    "plastic_2": [
+      5.965,
+      10.199,
+      4.902
+    ],
+    "glass": [
+      3.145,
+      10.6,
+      4.812
+    ]
+  },
+  "destinations": {
+    "plate_stack": [
+      14.051,
+      -1.449,
+      10.273
+    ],
+    "plate_pour": [
+      15.788,
+      6.511,
+      15.586
+    ],
+    "tissue_bin": [
+      11.65,
+      11.722,
+      8.174
+    ],
+    "cup_pour": [
+      12.524,
+      5.947,
+      8.601
+    ],
+    "plastic_stack": [
+      11.413,
+      -0.701,
+      6.003
+    ],
+    "glass_place": [
+      14.108,
+      -2.049,
+      11.097
+    ]
+  },
+  "plastic_stack_step_mm": 25.0,
+  "clearance_z_cm": 15.0,
+  "speed": 40,
+  "plate_motion": {
+    "stack_rise_mm": 5.0,
+    "pour_pitch_deg": 10.0,
+    "tilt_cycles": 2,
+    "hold_seconds": 1.0
+  },
+  "cup_motion": {
+    "approach_cm": 2.0,
+    "pour_pitch_deg": -95.0,
+    "shake_cycles": 2,
+    "hold_seconds": 1.0
+  },
+  "vision": {
+    "confidence": 0.4,
+    "stable_frames": 5,
+    "association_gate_px": 25.0
+  }
+}

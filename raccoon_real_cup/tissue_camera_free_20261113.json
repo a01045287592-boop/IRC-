@@ -1,0 +1,14 @@
+{
+  "_comment": "Camera-free tissue-only motion config; wrist XYZ in cm. Pickup XYZ updated per user. Motion-only; no RGB/ACT episode data.",
+  "grasp_wrist_cm": [
+    7.2774,
+    12.6914,
+    10.3
+  ],
+  "drop_wrist_cm": [
+    12.61,
+    11.823,
+    9.725
+  ],
+  "clearance_z_cm": 12.3
+}

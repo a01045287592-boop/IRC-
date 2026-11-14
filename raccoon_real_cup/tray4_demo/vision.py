@@ -2,7 +2,7 @@
 import math
 import cv2
 import numpy as np
-from core import KINDS, ROLES, selection
+from core import KINDS, ROLES, LABELS, selection
 
 def center(mask):
     y,x=np.nonzero(mask)
@@ -98,6 +98,71 @@ def inventory(dets):
             objects = [d for d in objects if id(d) not in duplicate_ids]
 
     return selection(objects,ref)
+
+def partial_selection(dets, target):
+    """Select one requested role while allowing other objects to be absent."""
+    if target not in ROLES:
+        raise ValueError('알 수 없는 부분 수집 물체: '+str(target))
+    trays=[d for d in dets if d['kind']=='tray' and d['confidence']>=.5]
+    if not trays: raise ValueError('앞 트레이를 찾지 못했습니다.')
+    tray=max(trays,key=lambda d:d['box'][3]);m=tray['mask']
+    ys,xs=np.nonzero(m)
+    if not len(ys): raise ValueError('트레이 마스크가 비어 있습니다.')
+    band=max(int((ys.max()-ys.min()+1)*.1),1)
+    bx=xs[ys>=ys.max()-band];x=(int(bx.min())+int(bx.max()))//2
+    col=np.flatnonzero(m[:,x]);ref=[x,int(col[-1]) if len(col) else int(ys.max())]
+    kind=KINDS[target]
+    candidates=[d for d in dets if d['kind']==kind]
+    if not candidates: raise ValueError(f'{LABELS[target]} 검출 없음')
+    d=max(candidates,key=lambda row:row['confidence'])
+    x1,y1,x2,y2=map(float,d['box'])
+    obj=dict(id=target,kind=kind,center_pixel=list(d['center']),
+             bbox_xyxy=list(map(float,d['box'])),
+             bbox_corners=[[x1,y1],[x2,y1],[x2,y2],[x1,y2]],
+             distance_pixel=float(math.dist(d['center'],ref)),
+             white_ratio=d.get('white_ratio'))
+    return dict(order=[target],objects=[obj],reference_pixel=list(ref),
+                distance_unit='pixel',rule='partial target selection')
+
+def remaining_selection(dets, remaining):
+    """Rank currently visible objects on the front tray, allowing missing roles."""
+    remaining=set(remaining)
+    unknown=remaining-set(ROLES)
+    if unknown: raise ValueError('알 수 없는 남은 물체: '+str(sorted(unknown)))
+    trays=[d for d in dets if d['kind']=='tray' and d['confidence']>=.5]
+    if not trays: raise ValueError('앞 트레이를 찾지 못했습니다.')
+    tray=max(trays,key=lambda d:d['box'][3]);m=tray['mask']
+    ys,xs=np.nonzero(m)
+    if not len(ys): raise ValueError('트레이 마스크가 비어 있습니다.')
+    band=max(int((ys.max()-ys.min()+1)*.1),1)
+    bx=xs[ys>=ys.max()-band]
+    x=(int(bx.min())+int(bx.max()))//2
+    col=np.flatnonzero(m[:,x]);ref=[x,int(col[-1]) if len(col) else int(ys.max())]
+    hull=cv2.convexHull(np.column_stack((xs,ys)).astype(np.int32))
+    area=np.zeros_like(m,np.uint8);cv2.fillConvexPoly(area,hull,1)
+    candidates=[]
+    for role in remaining:
+        kind=KINDS[role]
+        for d in dets:
+            if d['kind']!=kind: continue
+            mask=d['mask']; yy=np.nonzero(mask)[0]
+            if not len(yy):continue
+            base=mask.copy();base[:yy.max()-int((yy.max()-yy.min()+1)*.3)]=False
+            if not base.sum() or (base&(area>0)).sum()/base.sum()<.6:continue
+            x1,y1,x2,y2=map(float,d['box'])
+            candidates.append(dict(id=role,kind=kind,center_pixel=list(map(float,d['center'])),
+                bbox_xyxy=list(map(float,d['box'])),bbox_corners=[[x1,y1],[x2,y1],[x2,y2],[x1,y2]],
+                distance_pixel=float(math.dist(d['center'],ref)),confidence=float(d['confidence']),
+                white_ratio=d.get('white_ratio')))
+    # Prefer the strongest instance of each remaining semantic role.
+    best={}
+    for obj in candidates:
+        if obj['id'] not in best or obj['confidence']>best[obj['id']]['confidence']:
+            best[obj['id']]=obj
+    rows=sorted(best.values(),key=lambda o:(o['distance_pixel'],o['id']))
+    if not rows:raise ValueError('트레이 위 남은 물체가 검출되지 않았습니다.')
+    return dict(order=[o['id'] for o in rows],objects=rows,reference_pixel=list(map(float,ref)),
+                distance_unit='pixel',rule='front tray bottom edge midpoint to visible remaining mask centers')
 
 def draw_preview(image,dets,chosen,message):
     view=image.copy();rank={o['id']:i+1 for i,o in enumerate((chosen or {}).get('objects',[]))}

@@ -22,11 +22,15 @@ class NativePort:
         with self.lock:
             if not self.robot.is_connected():raise RuntimeError('로봇 연결이 끊겼습니다. 자동 재개하지 않습니다.')
             return kin.check_q(list(self.robot.encoder(-1)))
-    def apply(self,goal,gripper,mode,observed):
+    def apply(self,goal,gripper,mode,observed,speed=None):
         kin.check_q(goal);kin.check_q(observed)
+        command_speed = self.speed if speed is None else int(speed)
+        if not 1 <= command_speed <= 40:
+            raise ValueError('속도는 1~40입니다.')
         if self.failed:raise RuntimeError('정지한 연결에는 다시 명령하지 않습니다.')
         if mode not in MODES or gripper not in (0,1):raise ValueError('명령 모드 오류')
         changed_mode=self.mode!=mode
+        changed_speed=command_speed!=self.speed
         mask=[False,False,False,True] if mode=='wrist' else [True,True,True,False]
         changed_goal=self.goal is None or any(abs(goal[j]-self.goal[j])>1e-8 for j in range(4) if mask[j])
         if changed_mode and mode!='wrist':
@@ -47,12 +51,14 @@ class NativePort:
                     mode_value={'horizontal':r.JOINT_MODE_ANGLE_HORZ,
                                 'vertical':r.JOINT_MODE_ANGLE_VERT,'wrist':r.JOINT_MODE_ANGLE}[mode]
                     write(r.JOINT_MODE,mode_value)
-                    write(r.JOINT_SPEED,self.speed)
+                    write(r.JOINT_SPEED,command_speed)
                     if changed_mode and mode!='wrist':
                         # Mirrors the SDK lock's q4=encoder value initialization.
                         write(r.JOINT_ANGLE,3,float(observed[3]))
                     for j,used in enumerate(mask):
                         if used:write(r.JOINT_ANGLE,j,float(goal[j]))
+                elif changed_speed:
+                    write(r.JOINT_SPEED,command_speed)
                 if gripper!=self.gripper:
                     write(r.WRITE_EXT,[0x21,0x00,int(gripper),0,0,0,0,0])
         except BaseException as exc:
@@ -63,12 +69,12 @@ class NativePort:
             except Exception:pass
             raise
         end=time.monotonic_ns()
-        self.mode=mode;self.goal=list(goal);self.gripper=gripper
+        self.mode=mode;self.goal=list(goal);self.gripper=gripper;self.speed=command_speed
         if writes:
             self.command_index+=1
             self.log.write('command',command_index=self.command_index,call_start_ns=start,call_end_ns=end,goal_deg=list(goal),
                            mode=mode,gripper_command=gripper,joint_command_mask=list(map(int,mask)),
-                           speed=self.speed,sdk_writes=writes)
+                           speed=command_speed,sdk_writes=writes)
         return bool(writes)
     def stop(self):
         self.failed=True
@@ -127,8 +133,11 @@ class Controller:
             self.deadline=now+min(60.,max(12.,max(abs(a-b) for a,b in zip(q,self.goal))*.6))
         elif s['kind'] in ('open','close'):self.gripper=int(s['kind']=='close')
         elif s['kind']!='hold':raise ValueError('알 수 없는 단계 '+str(s))
-        self.log.write('phase',object_id=self.role,phase=s['name'],kind=s['kind'],index=self.index)
-        print(self.role, s['name'],flush=True)
+        self.log.write('phase',object_id=self.role,phase=s['name'],kind=s['kind'],index=self.index,
+                       demo_substep=s.get('demo_substep'),demo_substeps=s.get('demo_substeps'))
+        label=s['name']
+        if 'demo_substep' in s:label+=f" [{s['demo_substep']}/{s['demo_substeps']}]"
+        print(self.role, label,flush=True)
         if self.goal is None:raise ValueError('첫 단계는 이동이어야 합니다.')
     def _arrived(self,q):
         s=self.stage;self.history.append(list(q));self.history=self.history[-5:]
@@ -138,19 +147,39 @@ class Controller:
         if len(self.history)<5:return False
         spread=max(max(r[j] for r in self.history)-min(r[j] for r in self.history) for j in range(4))
         joint=max(abs(a-b) for a,b in zip(q,self.goal))
-        return joint<=2 and pos<=s['position_tolerance_cm'] and pe<=s['pitch_tolerance_deg'] and spread<=.5
+        position_tolerance=s['position_tolerance_cm']
+        joint_tolerance=s.get('joint_tolerance_deg',3.)
+        pitch_tolerance=s['pitch_tolerance_deg']
+        if self.role=='plastic_1' and s['name']=='LIFT_UPRIGHT':
+            position_tolerance=1.1
+            joint_tolerance=3.0
+            pitch_tolerance=6.0
+        return (joint<=joint_tolerance and
+                pos<=position_tolerance and pe<=pitch_tolerance and spread<=.8)
     def tick(self,q,now):
         if self.finished:raise RuntimeError('이미 끝난 구간')
         if self.stage is None:self._enter(q,now)
         else:
             s=self.stage
-            arrived=(self._arrived(q) if s['kind'] in ('move','rotate') else now-self.entered>=s['seconds'])
+            if s['kind'] in ('move','rotate') and s.get('demo_substep',0)<s.get('demo_substeps',0):
+                # Demo-only chunk playback: advance intermediate setpoints on a
+                # short cadence; keep encoder settling checks at each real waypoint.
+                arrived=now-self.entered>=.25
+            else:
+                arrived=(self._arrived(q) if s['kind'] in ('move','rotate') else now-self.entered>=s['seconds'])
             if s['kind'] in ('move','rotate') and now>self.deadline and not arrived:
-                raise RuntimeError('목표 도착 시간 초과: '+s['name'])
+                joint_error=max(abs(a-b) for a,b in zip(q,self.goal))
+                position_error=math.dist(kin.wrist_fk(q),kin.wrist_fk(self.goal))
+                pitch_error=abs(kin.pitch(q)-s['pitch'])
+                message=(f"목표 도착 시간 초과: {s['name']} / "
+                         f"관절 오차={joint_error:.2f}도 / 손목 XYZ 오차={position_error:.2f}cm / "
+                         f"pitch 오차={pitch_error:.2f}도")
+                print(message,flush=True)
+                raise RuntimeError(message)
             if arrived:
                 self.log.write('phase_done',object_id=self.role,phase=s['name'],qpos_deg=list(q))
                 self._enter(q,now)
-        if not self.finished:self.port.apply(self.goal,self.gripper,self.mode,q)
+        if not self.finished:self.port.apply(self.goal,self.gripper,self.mode,q,self.stage.get('speed'))
         return dict(action=encode_action(self.goal,self.gripper,self.mode),
                     mode=self.mode,gripper_command=self.gripper,
                     command_index=self.port.command_index,phase=self.stage['name'],finished=self.finished)

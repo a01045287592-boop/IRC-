@@ -29,11 +29,11 @@ def default_config():
         'destinations': {
             'tissue_bin': [12.610,11.823,9.725], 'plate_pour': [16.074,6.658,14.824],
             'cup_pour': [13.428,6.225,13.165], 'plate_place': [12.625,-1.165,9.676],
-            'glass_place': [16.492,-1.089,10.792], 'plastic_place': [11.313,-.486,5.716]},
+            'glass_place': [16.492,-1.089,10.792], 'plastic_place': [12.208,-.750,6.703]},
         'pickups': {r: None for r in ROLES},
         'speed': 20, 'clearance_z_cm': 15., 'approach_cm': 2.,
         'cup_pour_pitch_deg': -90., 'plate_pour_pitch_deg': 10.,
-        'pour_cycles': 2, 'hold_seconds': 1., 'gripper_settle_seconds': 1.,
+        'pour_cycles': 1, 'hold_seconds': 1., 'gripper_settle_seconds': 1.,
         'model': '~/yolo_ws/runs/segment/angle3/weights/best.pt',
         'vision_python': '~/yolo_ws/.venv/bin/python',
         'confidence': .4, 'glass_max': .20, 'plastic_min': .25,
@@ -78,7 +78,7 @@ def validate_config(cfg, require_pickups=True):
     if cfg['camera_hz']!=10 or cfg['joint_read_hz']!=20: raise ValueError('이 버전은 RGB 10Hz / 관절 읽기 20Hz입니다.')
     if not .5<=cfg['hold_seconds']<=3 or not .5<=cfg['gripper_settle_seconds']<=3:
         raise ValueError('유지 시간은 .5..3초')
-    if cfg['pour_cycles']!=2: raise ValueError('붓기는 두 번입니다.')
+    if cfg['pour_cycles']!=1: raise ValueError('현재 설정은 붓기 1회입니다.')
     if not 0<cfg['max_joint_age_ms']<=100 or not 100<=cfg['max_step_gap_ms']<=200:
         raise ValueError('동기화 허용 범위를 늘려 결측을 숨길 수 없습니다.')
 

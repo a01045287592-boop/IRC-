@@ -13,8 +13,14 @@ def rate(times):
     return dict(count=len(times),hz=(len(times)-1)*1e9/(times[-1]-times[0]),
                 median_gap_ms=statistics.median(gaps),max_gap_ms=max(gaps))
 
-def audit(folder):
+def audit(folder, *, partial=False):
     folder=Path(folder);m=read_json(folder/'metadata.json');errors=[];notes=[]
+    expected_roles=set(ROLES)
+    if partial:
+        target=m.get('target')
+        if target not in ROLES or m.get('object_count')!=1:
+            errors.append('invalid partial target/object_count')
+        expected_roles={target}
     cfg=read_json(folder/'config.json')
     def rows(name):return list(jsonl(folder/name)) if (folder/name).is_file() else []
     frames=rows('frames.jsonl');steps=rows('steps.jsonl');events=rows('events.jsonl')
@@ -24,13 +30,13 @@ def audit(folder):
     if m.get('status')!='complete' or m.get('success')!='user_confirmed':errors.append('full episode not confirmed successful')
     if m.get('simulated'):errors.append('simulation is not a real demonstration')
     if m.get('empty_run'):errors.append('empty gripper run is not a successful task demonstration')
-    if {r.get('id') for r in m.get('objects',[]) if r.get('success')=='user_confirmed'}!=set(ROLES):
-        errors.append('four object success confirmations required')
+    if {r.get('id') for r in m.get('objects',[]) if r.get('success')=='user_confirmed'}!=expected_roles:
+        errors.append('target success confirmation required' if partial else 'four object success confirmations required')
     if any(r['event'] in ('error','joint_error','command_error') for r in events):errors.append('capture/controller error in raw events')
     if any(k in m for k in ('stop_error','sampler_close_error','dispose_error','camera_forced_stop')):errors.append('unclean hardware/capture shutdown')
     if (folder/'camera_error.json').exists():errors.append('camera worker error')
     annotations=rows('annotations.jsonl')
-    if [r['frame_index'] for r in annotations]!=[r['frame_index'] for r in frames]:
+    if (not partial or annotations) and [r['frame_index'] for r in annotations]!=[r['frame_index'] for r in frames]:
         errors.append('offline annotation rows missing or inconsistent')
     for ann in annotations:
         if set(ann.get('objects',{}))!=set(ROLES):
@@ -42,7 +48,8 @@ def audit(folder):
                 if (not isinstance(box,list) or len(box)!=4 or not isinstance(center,list) or len(center)!=2
                     or not isinstance(corners,list) or len(corners)!=4):bad=True;break
                 if not all(isinstance(v,(float,int)) and math.isfinite(v) for v in box+center):bad=True;break
-            elif obj.get('status') not in ('not_detected','ambiguous_multiple_detections'):bad=True;break
+            elif obj.get('status') not in ('not_detected','ambiguous_multiple_detections',
+                                            'not_active_target','not_applicable_after_grasp','no_active_target'):bad=True;break
         if bad:errors.append('invalid bbox/center annotation');break
     grouped=collections.defaultdict(list);seen=set();max_age=0.;max_latency=0.
     for i,s in enumerate(steps):
@@ -65,7 +72,7 @@ def audit(folder):
             expected=encode_action(c['goal_deg'],c['gripper_command'],c['mode'])
             if len(s['action'])!=8 or max(abs(a-b) for a,b in zip(expected,s['action']))>1e-6:errors.append(tag+': command/action mismatch')
             if c['call_end_ns']>s['decision_ns']:errors.append(tag+': command timestamp mismatch')
-        if s['object_id'] not in ROLES:errors.append(tag+': invalid object')
+        if s['object_id'] not in expected_roles:errors.append(tag+': invalid object')
         if s['train_valid'] and s['observation_state_mask']!=[1]*5:errors.append(tag+': masked state exported as valid')
         grouped[s['segment_id']].append(s)
     segment_stats={}
@@ -77,11 +84,17 @@ def audit(folder):
         if not any(s['phase']=='RETURN_EXACT_HOME' for s in group):errors.append(f'segment {key}: home return missing')
         role=group[0]['object_id'];phases={s['phase'] for s in group}
         if not {'GRASP','RELEASE','RETURN_START'}<=phases:errors.append(f'segment {key}: grasp/release/return phase missing')
-        if role in ('plastic_1','glass_1') and not {'TILT_DOWN_1','TILT_UP_1','TILT_DOWN_2','TILT_UP_2'}<=phases:
+        cycles=int(cfg.get('pour_cycles',1))
+        cup_phases={'TILT_DOWN_1','TILT_UP_1'}
+        plate_phases={'TIP_UP_1','POINT_DOWN_1'}
+        if cycles>=2:
+            cup_phases |= {'TILT_DOWN_2','TILT_UP_2'}
+            plate_phases |= {'TIP_UP_2','POINT_DOWN_2'}
+        if role in ('plastic_1','glass_1') and not cup_phases<=phases:
             errors.append(f'segment {key}: cup pour cycle missing')
-        if role=='plate_1' and not {'TIP_UP_1','TIP_UP_2','POINT_DOWN_1','POINT_DOWN_2'}<=phases:
+        if role=='plate_1' and not plate_phases<=phases:
             errors.append(f'segment {key}: plate pour cycle missing')
-    if len(grouped)!=4:errors.append('four segments required')
+    if len(grouped)!=len(expected_roles):errors.append('one segment required' if partial else 'four segments required')
     joints=[r['read_end_ns'] for r in events if r['event']=='joint_observation']
     joint_stats=rate(joints)
     if not joint_stats['hz'] or not 17<=joint_stats['hz']<=23:errors.append('20Hz encoder read target missed')

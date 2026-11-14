@@ -22,7 +22,9 @@ def main():
         profile=pipe.start(rc);started=True
         atomic_json(folder/'camera_info.json',dict(serial=profile.get_device().get_info(rs.camera_info.serial_number),
                     width=640,height=480,source_fps=30,saved_target_hz=10,color='RGB on PNG decode'))
-        log=JsonLog(folder/'frames.jsonl');(folder/'rgb_frames').mkdir()
+        log=JsonLog(folder/'frames.jsonl')
+        if read_json(folder/'camera_control.json').get('record_frames',True):
+            (folder/'rgb_frames').mkdir()
         previous=None;stable=0;running=False;armed=False;index=0;next_save=0;period=100_000_000
         win='TRAY4 - confirm in TERMINAL / Q cancel'
         last_number=None
@@ -64,7 +66,8 @@ def main():
                         continue
                     selected.update(frozen_host_ns=now,confirmed_in_terminal=True)
                     atomic_json(folder/'selection.json',selected)
-                    if not cv2.imwrite(str(folder/'initial_rgb.png'),image):raise OSError('초기 이미지 저장 실패')
+                    if control.get('record_frames',True):
+                        if not cv2.imwrite(str(folder/'initial_rgb.png'),image):raise OSError('초기 이미지 저장 실패')
                     armed=True;del model
                     atomic_json(folder/'camera_status.json',dict(state='waiting_for_joint_sampler',host_ns=now))
                 else:
@@ -77,8 +80,8 @@ def main():
                     if next_save==0:next_save=now
                     skipped=max(0,(now-next_save)//period)
                     next_save+=(skipped+1)*period
-                    file=f'rgb_frames/{index:06d}.png'
-                    if not cv2.imwrite(str(folder/file),image):raise OSError('RGB 저장 실패')
+                    file=f'rgb_frames/{index:06d}.png' if control.get('record_frames',True) else None
+                    if file and not cv2.imwrite(str(folder/file),image):raise OSError('RGB 저장 실패')
                     row=dict(frame_index=index,file=file,host_arrival_ns=now,
                              camera_timestamp_ms=frame.get_timestamp(),camera_clock=str(frame.get_frame_timestamp_domain()),
                              camera_frame_number=number,save_deadlines_skipped=int(skipped))

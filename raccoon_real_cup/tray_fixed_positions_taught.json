@@ -1,0 +1,58 @@
+{
+  "unit": "wrist_cm",
+  "positions": {
+    "tissue_bin": {
+      "wrist_cm": [
+        12.61,
+        11.823,
+        9.725
+      ],
+      "measured_pitch_deg": 1.93
+    },
+    "plate_pour": {
+      "wrist_cm": [
+        16.074,
+        6.658,
+        14.824
+      ],
+      "measured_pitch_deg": -86.92
+    },
+    "cup_pour": {
+      "wrist_cm": [
+        13.428,
+        6.225,
+        13.165
+      ],
+      "measured_pitch_deg": -2.02,
+      "used_for": [
+        "plastic",
+        "glass"
+      ]
+    },
+    "plate_place": {
+      "wrist_cm": [
+        12.625,
+        -1.165,
+        9.676
+      ],
+      "measured_pitch_deg": -88.07
+    },
+    "glass_place": {
+      "wrist_cm": [
+        16.492,
+        -1.089,
+        10.792
+      ],
+      "measured_pitch_deg": -90.35
+    },
+    "plastic_place": {
+      "wrist_cm": [
+        11.313,
+        -0.486,
+        5.716
+      ],
+      "measured_pitch_deg": -1.85
+    }
+  },
+  "second_plastic_raise_cm": 2.5
+}
