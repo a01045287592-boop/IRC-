@@ -6,3 +6,13 @@ __pycache__/
 .DS_Store
 raccoon_dataset/
 setups/
+
+# Large/local training outputs and collected robotics data
+raccoon_dataset/
+checkpoint/
+act_debug/
+act_evaluation/
+*.safetensors
+*.npz
+cafe_demo/*outputs/
+cafe_demo/act_tissue_experiment*/
